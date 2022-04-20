@@ -132,7 +132,9 @@ $SqlInfoCache = @{}
 function Fill-SqlInfoCache {
     $t_now = Get-Date
 
-    if (!$Global:SqlInfoCache.Ts -or ($t_now - $Global:SqlInfoCache.Ts).TotalMilliseconds -gt [Int32]600000) {
+    if (!$Force -and $Global:SqlInfoCache.Ts -and ((Get-Date) - $Global:SqlInfoCache.Ts).TotalMilliseconds -le [Int32]600000) {
+        return
+    }
         # Refresh cache
         $Global:SqlInfoCache.Data = Invoke-OracleSqlCommand "
             SELECT
