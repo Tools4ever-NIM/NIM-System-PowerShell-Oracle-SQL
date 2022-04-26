@@ -135,65 +135,65 @@ function Fill-SqlInfoCache {
     if (!$Force -and $Global:SqlInfoCache.Ts -and ((Get-Date) - $Global:SqlInfoCache.Ts).TotalMilliseconds -le [Int32]600000) {
         return
     }
-        # Refresh cache
-        $Global:SqlInfoCache.Data = Invoke-OracleSqlCommand "
-            SELECT
-                AT.OWNER || '.' || AT.TABLE_NAME AS full_object_name,
-                (CASE WHEN AO.OBJECT_TYPE = 'TABLE' THEN 'Table' WHEN AO.OBJECT_TYPE = 'VIEW' THEN 'View' ELSE 'Unknown' END) AS object_type,
-                ATC.COLUMN_NAME,
-                (CASE WHEN PKS.TABLE_NAME IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
-                (CASE WHEN ATC.IDENTITY_COLUMN = 'NO' THEN 0 ELSE 1 END) AS is_identity,
-                (CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO' THEN 0 ELSE 1 END) AS is_computed,
-                (CASE WHEN ATC.NULLABLE        = 'N'  THEN 0 ELSE 1 END) AS is_nullable
-            FROM
-                SYS.ALL_TABLES AT
-                INNER JOIN SYS.ALL_OBJECTS AO ON AT.OWNER = AO.OWNER AND AT.TABLE_NAME = AO.OBJECT_NAME
-                INNER JOIN SYS.ALL_TAB_COLS ATC ON AT.OWNER = ATC.OWNER AND AT.TABLE_NAME = ATC.TABLE_NAME
-                LEFT JOIN SYS.ALL_CONS_COLUMNS ACC ON AT.OWNER = ACC.OWNER AND AT.TABLE_NAME = ACC.TABLE_NAME AND ATC.COLUMN_NAME = ACC.COLUMN_NAME
-                LEFT JOIN (
-                    SELECT
-                        OWNER,
-                        TABLE_NAME,
-                        CONSTRAINT_NAME
-                    FROM
-                        SYS.ALL_CONSTRAINTS
-                    WHERE
-                        CONSTRAINT_TYPE = 'P'
-                ) PKS ON AT.OWNER = PKS.OWNER AND AT.TABLE_NAME = PKS.TABLE_NAME AND ACC.CONSTRAINT_NAME = PKS.CONSTRAINT_NAME
-            WHERE
-                AT.OWNER NOT IN ('APPQOSSYS', 'CTXSYS', 'DBSFWUSER', 'DBSNMP', 'DVSYS', 'GSMADMIN_INTERNAL', 'MDSYS', 'OLAPSYS', 'ORDDATA', 'ORDSYS', 'RQSYS', 'SYSTEM', 'WMSYS', 'XDB','SYS','LBACSYS') AND
-                AT.TABLE_NAME NOT LIKE '%$%'
-            UNION
-            SELECT
-                AT.OWNER || '.' || AT.VIEW_NAME AS full_object_name,
-                (CASE WHEN AO.OBJECT_TYPE = 'TABLE' THEN 'Table' WHEN AO.OBJECT_TYPE = 'VIEW' THEN 'View' ELSE 'Unknown' END) AS object_type,
-                ATC.COLUMN_NAME,
-                (CASE WHEN PKS.TABLE_NAME IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
-                (CASE WHEN ATC.IDENTITY_COLUMN = 'NO' THEN 0 ELSE 1 END) AS is_identity,
-                (CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO' THEN 0 ELSE 1 END) AS is_computed,
-                (CASE WHEN ATC.NULLABLE        = 'N'  THEN 0 ELSE 1 END) AS is_nullable
-            FROM
-                SYS.ALL_VIEWS AT
-                INNER JOIN SYS.ALL_OBJECTS AO ON AT.OWNER = AO.OWNER AND AT.VIEW_NAME = AO.OBJECT_NAME
-                INNER JOIN SYS.ALL_TAB_COLS ATC ON AT.OWNER = ATC.OWNER AND AT.VIEW_NAME = ATC.TABLE_NAME
-                LEFT JOIN SYS.ALL_CONS_COLUMNS ACC ON AT.OWNER = ACC.OWNER AND AT.VIEW_NAME = ACC.TABLE_NAME AND ATC.COLUMN_NAME = ACC.COLUMN_NAME
-                LEFT JOIN (
-                    SELECT
-                        OWNER,
-                        TABLE_NAME,
-                        CONSTRAINT_NAME
-                    FROM
-                        SYS.ALL_CONSTRAINTS
-                    WHERE
-                        CONSTRAINT_TYPE = 'P'
-                ) PKS ON AT.OWNER = PKS.OWNER AND AT.VIEW_NAME = PKS.TABLE_NAME AND ACC.CONSTRAINT_NAME = PKS.CONSTRAINT_NAME
-            WHERE
-                AT.OWNER NOT IN ('APPQOSSYS', 'CTXSYS', 'DBSFWUSER', 'DBSNMP', 'DVSYS', 'GSMADMIN_INTERNAL', 'MDSYS', 'OLAPSYS', 'ORDDATA', 'ORDSYS', 'RQSYS', 'SYSTEM', 'WMSYS', 'XDB','SYS','LBACSYS') AND
-                AT.VIEW_NAME NOT LIKE '%$%'
-        "
+	
+	# Refresh cache
+	$Global:SqlInfoCache.Data = Invoke-OracleSqlCommand "
+		SELECT
+			AT.OWNER || '.' || AT.TABLE_NAME AS full_object_name,
+			(CASE WHEN AO.OBJECT_TYPE = 'TABLE' THEN 'Table' WHEN AO.OBJECT_TYPE = 'VIEW' THEN 'View' ELSE 'Unknown' END) AS object_type,
+			ATC.COLUMN_NAME,
+			(CASE WHEN PKS.TABLE_NAME IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
+			(CASE WHEN ATC.IDENTITY_COLUMN = 'NO' THEN 0 ELSE 1 END) AS is_identity,
+			(CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO' THEN 0 ELSE 1 END) AS is_computed,
+			(CASE WHEN ATC.NULLABLE        = 'N'  THEN 0 ELSE 1 END) AS is_nullable
+		FROM
+			SYS.ALL_TABLES AT
+			INNER JOIN SYS.ALL_OBJECTS AO ON AT.OWNER = AO.OWNER AND AT.TABLE_NAME = AO.OBJECT_NAME
+			INNER JOIN SYS.ALL_TAB_COLS ATC ON AT.OWNER = ATC.OWNER AND AT.TABLE_NAME = ATC.TABLE_NAME
+			LEFT JOIN SYS.ALL_CONS_COLUMNS ACC ON AT.OWNER = ACC.OWNER AND AT.TABLE_NAME = ACC.TABLE_NAME AND ATC.COLUMN_NAME = ACC.COLUMN_NAME
+			LEFT JOIN (
+				SELECT
+					OWNER,
+					TABLE_NAME,
+					CONSTRAINT_NAME
+				FROM
+					SYS.ALL_CONSTRAINTS
+				WHERE
+					CONSTRAINT_TYPE = 'P'
+			) PKS ON AT.OWNER = PKS.OWNER AND AT.TABLE_NAME = PKS.TABLE_NAME AND ACC.CONSTRAINT_NAME = PKS.CONSTRAINT_NAME
+		WHERE
+			AT.OWNER NOT IN ('APPQOSSYS', 'CTXSYS', 'DBSFWUSER', 'DBSNMP', 'DVSYS', 'GSMADMIN_INTERNAL', 'MDSYS', 'OLAPSYS', 'ORDDATA', 'ORDSYS', 'RQSYS', 'SYSTEM', 'WMSYS', 'XDB','SYS','LBACSYS') AND
+			AT.TABLE_NAME NOT LIKE '%$%'
+		UNION
+		SELECT
+			AT.OWNER || '.' || AT.VIEW_NAME AS full_object_name,
+			(CASE WHEN AO.OBJECT_TYPE = 'TABLE' THEN 'Table' WHEN AO.OBJECT_TYPE = 'VIEW' THEN 'View' ELSE 'Unknown' END) AS object_type,
+			ATC.COLUMN_NAME,
+			(CASE WHEN PKS.TABLE_NAME IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
+			(CASE WHEN ATC.IDENTITY_COLUMN = 'NO' THEN 0 ELSE 1 END) AS is_identity,
+			(CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO' THEN 0 ELSE 1 END) AS is_computed,
+			(CASE WHEN ATC.NULLABLE        = 'N'  THEN 0 ELSE 1 END) AS is_nullable
+		FROM
+			SYS.ALL_VIEWS AT
+			INNER JOIN SYS.ALL_OBJECTS AO ON AT.OWNER = AO.OWNER AND AT.VIEW_NAME = AO.OBJECT_NAME
+			INNER JOIN SYS.ALL_TAB_COLS ATC ON AT.OWNER = ATC.OWNER AND AT.VIEW_NAME = ATC.TABLE_NAME
+			LEFT JOIN SYS.ALL_CONS_COLUMNS ACC ON AT.OWNER = ACC.OWNER AND AT.VIEW_NAME = ACC.TABLE_NAME AND ATC.COLUMN_NAME = ACC.COLUMN_NAME
+			LEFT JOIN (
+				SELECT
+					OWNER,
+					TABLE_NAME,
+					CONSTRAINT_NAME
+				FROM
+					SYS.ALL_CONSTRAINTS
+				WHERE
+					CONSTRAINT_TYPE = 'P'
+			) PKS ON AT.OWNER = PKS.OWNER AND AT.VIEW_NAME = PKS.TABLE_NAME AND ACC.CONSTRAINT_NAME = PKS.CONSTRAINT_NAME
+		WHERE
+			AT.OWNER NOT IN ('APPQOSSYS', 'CTXSYS', 'DBSFWUSER', 'DBSNMP', 'DVSYS', 'GSMADMIN_INTERNAL', 'MDSYS', 'OLAPSYS', 'ORDDATA', 'ORDSYS', 'RQSYS', 'SYSTEM', 'WMSYS', 'XDB','SYS','LBACSYS') AND
+			AT.VIEW_NAME NOT LIKE '%$%'
+	"
 
-        $Global:SqlInfoCache.Ts = $t_now
-    }
+	$Global:SqlInfoCache.Ts = $t_now
 }
 
 
