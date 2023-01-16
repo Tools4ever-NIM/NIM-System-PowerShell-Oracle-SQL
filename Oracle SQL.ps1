@@ -131,69 +131,69 @@ $SqlInfoCache = @{}
 
 function Fill-SqlInfoCache {
     $t_now = Get-Date
-
+    
     if (!$Force -and $Global:SqlInfoCache.Ts -and ((Get-Date) - $Global:SqlInfoCache.Ts).TotalMilliseconds -le [Int32]600000) {
         return
     }
-	
-	# Refresh cache
-	$Global:SqlInfoCache.Data = Invoke-OracleSqlCommand "
-		SELECT
-			AT.OWNER || '.' || AT.TABLE_NAME AS full_object_name,
-			(CASE WHEN AO.OBJECT_TYPE = 'TABLE' THEN 'Table' WHEN AO.OBJECT_TYPE = 'VIEW' THEN 'View' ELSE 'Unknown' END) AS object_type,
-			ATC.COLUMN_NAME,
-			(CASE WHEN PKS.TABLE_NAME IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
-			(CASE WHEN ATC.IDENTITY_COLUMN = 'NO' THEN 0 ELSE 1 END) AS is_identity,
-			(CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO' THEN 0 ELSE 1 END) AS is_computed,
-			(CASE WHEN ATC.NULLABLE        = 'N'  THEN 0 ELSE 1 END) AS is_nullable
-		FROM
-			SYS.ALL_TABLES AT
-			INNER JOIN SYS.ALL_OBJECTS AO ON AT.OWNER = AO.OWNER AND AT.TABLE_NAME = AO.OBJECT_NAME
-			INNER JOIN SYS.ALL_TAB_COLS ATC ON AT.OWNER = ATC.OWNER AND AT.TABLE_NAME = ATC.TABLE_NAME
-			LEFT JOIN SYS.ALL_CONS_COLUMNS ACC ON AT.OWNER = ACC.OWNER AND AT.TABLE_NAME = ACC.TABLE_NAME AND ATC.COLUMN_NAME = ACC.COLUMN_NAME
-			LEFT JOIN (
-				SELECT
-					OWNER,
-					TABLE_NAME,
-					CONSTRAINT_NAME
-				FROM
-					SYS.ALL_CONSTRAINTS
-				WHERE
-					CONSTRAINT_TYPE = 'P'
-			) PKS ON AT.OWNER = PKS.OWNER AND AT.TABLE_NAME = PKS.TABLE_NAME AND ACC.CONSTRAINT_NAME = PKS.CONSTRAINT_NAME
-		WHERE
-			AT.OWNER NOT IN ('APPQOSSYS', 'CTXSYS', 'DBSFWUSER', 'DBSNMP', 'DVSYS', 'GSMADMIN_INTERNAL', 'MDSYS', 'OLAPSYS', 'ORDDATA', 'ORDSYS', 'RQSYS', 'SYSTEM', 'WMSYS', 'XDB','SYS','LBACSYS') AND
-			AT.TABLE_NAME NOT LIKE '%$%'
-		UNION
-		SELECT
-			AT.OWNER || '.' || AT.VIEW_NAME AS full_object_name,
-			(CASE WHEN AO.OBJECT_TYPE = 'TABLE' THEN 'Table' WHEN AO.OBJECT_TYPE = 'VIEW' THEN 'View' ELSE 'Unknown' END) AS object_type,
-			ATC.COLUMN_NAME,
-			(CASE WHEN PKS.TABLE_NAME IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
-			(CASE WHEN ATC.IDENTITY_COLUMN = 'NO' THEN 0 ELSE 1 END) AS is_identity,
-			(CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO' THEN 0 ELSE 1 END) AS is_computed,
-			(CASE WHEN ATC.NULLABLE        = 'N'  THEN 0 ELSE 1 END) AS is_nullable
-		FROM
-			SYS.ALL_VIEWS AT
-			INNER JOIN SYS.ALL_OBJECTS AO ON AT.OWNER = AO.OWNER AND AT.VIEW_NAME = AO.OBJECT_NAME
-			INNER JOIN SYS.ALL_TAB_COLS ATC ON AT.OWNER = ATC.OWNER AND AT.VIEW_NAME = ATC.TABLE_NAME
-			LEFT JOIN SYS.ALL_CONS_COLUMNS ACC ON AT.OWNER = ACC.OWNER AND AT.VIEW_NAME = ACC.TABLE_NAME AND ATC.COLUMN_NAME = ACC.COLUMN_NAME
-			LEFT JOIN (
-				SELECT
-					OWNER,
-					TABLE_NAME,
-					CONSTRAINT_NAME
-				FROM
-					SYS.ALL_CONSTRAINTS
-				WHERE
-					CONSTRAINT_TYPE = 'P'
-			) PKS ON AT.OWNER = PKS.OWNER AND AT.VIEW_NAME = PKS.TABLE_NAME AND ACC.CONSTRAINT_NAME = PKS.CONSTRAINT_NAME
-		WHERE
-			AT.OWNER NOT IN ('APPQOSSYS', 'CTXSYS', 'DBSFWUSER', 'DBSNMP', 'DVSYS', 'GSMADMIN_INTERNAL', 'MDSYS', 'OLAPSYS', 'ORDDATA', 'ORDSYS', 'RQSYS', 'SYSTEM', 'WMSYS', 'XDB','SYS','LBACSYS') AND
-			AT.VIEW_NAME NOT LIKE '%$%'
-	"
+    
+    # Refresh cache
+    $Global:SqlInfoCache.Data = Invoke-OracleSqlCommand "
+        SELECT
+            AT.OWNER || '.' || AT.TABLE_NAME AS full_object_name,
+            (CASE WHEN AO.OBJECT_TYPE = 'TABLE' THEN 'Table' WHEN AO.OBJECT_TYPE = 'VIEW' THEN 'View' ELSE 'Unknown' END) AS object_type,
+            ATC.COLUMN_NAME,
+            (CASE WHEN PKS.TABLE_NAME IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
+            (CASE WHEN ATC.IDENTITY_COLUMN = 'NO' THEN 0 ELSE 1 END) AS is_identity,
+            (CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO' THEN 0 ELSE 1 END) AS is_computed,
+            (CASE WHEN ATC.NULLABLE        = 'N'  THEN 0 ELSE 1 END) AS is_nullable
+        FROM
+            SYS.ALL_TABLES AT
+            INNER JOIN SYS.ALL_OBJECTS AO ON AT.OWNER = AO.OWNER AND AT.TABLE_NAME = AO.OBJECT_NAME
+            INNER JOIN SYS.ALL_TAB_COLS ATC ON AT.OWNER = ATC.OWNER AND AT.TABLE_NAME = ATC.TABLE_NAME
+            LEFT JOIN SYS.ALL_CONS_COLUMNS ACC ON AT.OWNER = ACC.OWNER AND AT.TABLE_NAME = ACC.TABLE_NAME AND ATC.COLUMN_NAME = ACC.COLUMN_NAME
+            LEFT JOIN (
+                SELECT
+                    OWNER,
+                    TABLE_NAME,
+                    CONSTRAINT_NAME
+                FROM
+                    SYS.ALL_CONSTRAINTS
+                WHERE
+                    CONSTRAINT_TYPE = 'P'
+            ) PKS ON AT.OWNER = PKS.OWNER AND AT.TABLE_NAME = PKS.TABLE_NAME AND ACC.CONSTRAINT_NAME = PKS.CONSTRAINT_NAME
+        WHERE
+            AT.OWNER NOT IN ('APPQOSSYS', 'CTXSYS', 'DBSFWUSER', 'DBSNMP', 'DVSYS', 'GSMADMIN_INTERNAL', 'MDSYS', 'OLAPSYS', 'ORDDATA', 'ORDSYS', 'RQSYS', 'SYSTEM', 'WMSYS', 'XDB','SYS','LBACSYS') AND
+            AT.TABLE_NAME NOT LIKE '%$%'
+        UNION
+        SELECT
+            AT.OWNER || '.' || AT.VIEW_NAME AS full_object_name,
+            (CASE WHEN AO.OBJECT_TYPE = 'TABLE' THEN 'Table' WHEN AO.OBJECT_TYPE = 'VIEW' THEN 'View' ELSE 'Unknown' END) AS object_type,
+            ATC.COLUMN_NAME,
+            (CASE WHEN PKS.TABLE_NAME IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
+            (CASE WHEN ATC.IDENTITY_COLUMN = 'NO' THEN 0 ELSE 1 END) AS is_identity,
+            (CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO' THEN 0 ELSE 1 END) AS is_computed,
+            (CASE WHEN ATC.NULLABLE        = 'N'  THEN 0 ELSE 1 END) AS is_nullable
+        FROM
+            SYS.ALL_VIEWS AT
+            INNER JOIN SYS.ALL_OBJECTS AO ON AT.OWNER = AO.OWNER AND AT.VIEW_NAME = AO.OBJECT_NAME
+            INNER JOIN SYS.ALL_TAB_COLS ATC ON AT.OWNER = ATC.OWNER AND AT.VIEW_NAME = ATC.TABLE_NAME
+            LEFT JOIN SYS.ALL_CONS_COLUMNS ACC ON AT.OWNER = ACC.OWNER AND AT.VIEW_NAME = ACC.TABLE_NAME AND ATC.COLUMN_NAME = ACC.COLUMN_NAME
+            LEFT JOIN (
+                SELECT
+                    OWNER,
+                    TABLE_NAME,
+                    CONSTRAINT_NAME
+                FROM
+                    SYS.ALL_CONSTRAINTS
+                WHERE
+                    CONSTRAINT_TYPE = 'P'
+            ) PKS ON AT.OWNER = PKS.OWNER AND AT.VIEW_NAME = PKS.TABLE_NAME AND ACC.CONSTRAINT_NAME = PKS.CONSTRAINT_NAME
+        WHERE
+            AT.OWNER NOT IN ('APPQOSSYS', 'CTXSYS', 'DBSFWUSER', 'DBSNMP', 'DVSYS', 'GSMADMIN_INTERNAL', 'MDSYS', 'OLAPSYS', 'ORDDATA', 'ORDSYS', 'RQSYS', 'SYSTEM', 'WMSYS', 'XDB','SYS','LBACSYS') AND
+            AT.VIEW_NAME NOT LIKE '%$%'
+    "
 
-	$Global:SqlInfoCache.Ts = $t_now
+    $Global:SqlInfoCache.Ts = $t_now
 }
 
 
@@ -228,7 +228,7 @@ function Idm-Dispatcher {
     )
 
     Log info "-Class='$Class' -Operation='$Operation' -GetMeta=$GetMeta -SystemParams='$SystemParams' -FunctionParams='$FunctionParams'"
-
+    Log debug "test"
     if ($Class -eq '') {
 
         if ($GetMeta) {
@@ -506,84 +506,34 @@ function Invoke-OracleSqlCommand {
             [string] $Command
         )
 
-        $oracle_command = New-Object Oracle.ManagedDataAccess.Client.OracleCommand($Command, $Global:OracleSqlConnection)
-        $data_reader = $oracle_command.ExecuteReader()
+        $SQLCommand = New-Object Oracle.ManagedDataAccess.Client.OracleCommand($Command, $Global:OracleSqlConnection)
+        $data_reader = $SqlCommand.ExecuteReader()
         $column_names = @($data_reader.GetSchemaTable().ColumnName)
 
         if ($column_names) {
 
-            # Read data
-            while ($data_reader.Read()) {
-                $hash_table = [ordered]@{}
-
-                foreach ($column_name in $column_names) {
-                    $hash_table[$column_name] = if ($data_reader[$column_name] -is [System.DBNull]) { $null } else { $data_reader[$column_name] }
-                }
-
-                # Output data
-                New-Object -TypeName PSObject -Property $hash_table
-            }
-
-        }
-
-        $data_reader.Close()
-        $oracle_command.Dispose()
-    }
-
-    # Streaming
-    function Invoke-OracleSqlCommand-ExecuteReader00 {
-        param (
-            [string] $Command
-        )
-
-        $oracle_command = New-Object Oracle.ManagedDataAccess.Client.OracleCommand($Command, $Global:OracleSqlConnection)
-        $data_reader = $oracle_command.ExecuteReader()
-        $column_names = @($data_reader.GetSchemaTable().ColumnName)
-
-        if ($column_names) {
-
-            # Initialize result
             $hash_table = [ordered]@{}
 
-            for ($i = 0; $i -lt $column_names.Count; $i++) {
-                $hash_table[$column_names[$i]] = ''
+            foreach ($column_name in $column_names) {
+                $hash_table[$column_name] = ""
             }
 
-            $result = New-Object -TypeName PSObject -Property $hash_table
+            $obj = New-Object -TypeName PSObject -Property $hash_table
 
             # Read data
             while ($data_reader.Read()) {
                 foreach ($column_name in $column_names) {
-                    $result.$column_name = $data_reader[$column_name]
+                    $obj.$column_name = if ($data_reader[$column_name] -is [System.DBNull]) { $null } else { $data_reader[$column_name] }
                 }
 
                 # Output data
-                $result
+                $obj
             }
 
         }
 
         $data_reader.Close()
-        $oracle_command.Dispose()
-    }
-
-    # Non-streaming (data stored in $data_set)
-    function Invoke-OracleSqlCommand-DataAdapter-DataSet {
-        param (
-            [string] $Command
-        )
-
-        $oracle_command = New-Object Oracle.ManagedDataAccess.Client.OracleCommand($Command, $Global:OracleSqlConnection)
-        $data_adapter   = New-Object Oracle.ManagedDataAccess.Client.OracleDataAdapter($oracle_command)
-        $data_set       = New-Object System.Data.DataSet
-        $data_adapter.Fill($data_set) | Out-Null
-
-        # Output data
-        $data_set.Tables[0]
-
-        $data_set.Dispose()
-        $data_adapter.Dispose()
-        $oracle_command.Dispose()
+        $SQLCommand.Dispose()
     }
 
     $Command = ($Command -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }) -join ' '
