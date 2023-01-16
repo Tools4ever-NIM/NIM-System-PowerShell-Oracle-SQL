@@ -536,62 +536,6 @@ function Invoke-OracleSqlCommand {
         $oracle_command.Dispose()
     }
 
-    # Streaming
-    function Invoke-OracleSqlCommand-ExecuteReader00 {
-        param (
-            [string] $Command
-        )
-
-        $oracle_command = New-Object Oracle.ManagedDataAccess.Client.OracleCommand($Command, $Global:OracleSqlConnection)
-        $data_reader = $oracle_command.ExecuteReader()
-        $column_names = @($data_reader.GetSchemaTable().ColumnName)
-
-        if ($column_names) {
-
-            # Initialize result
-            $hash_table = [ordered]@{}
-
-            for ($i = 0; $i -lt $column_names.Count; $i++) {
-                $hash_table[$column_names[$i]] = ''
-            }
-
-            $result = New-Object -TypeName PSObject -Property $hash_table
-
-            # Read data
-            while ($data_reader.Read()) {
-                foreach ($column_name in $column_names) {
-                    $result.$column_name = $data_reader[$column_name]
-                }
-
-                # Output data
-                $result
-            }
-
-        }
-
-        $data_reader.Close()
-        $oracle_command.Dispose()
-    }
-
-    # Non-streaming (data stored in $data_set)
-    function Invoke-OracleSqlCommand-DataAdapter-DataSet {
-        param (
-            [string] $Command
-        )
-
-        $oracle_command = New-Object Oracle.ManagedDataAccess.Client.OracleCommand($Command, $Global:OracleSqlConnection)
-        $data_adapter   = New-Object Oracle.ManagedDataAccess.Client.OracleDataAdapter($oracle_command)
-        $data_set       = New-Object System.Data.DataSet
-        $data_adapter.Fill($data_set) | Out-Null
-
-        # Output data
-        $data_set.Tables[0]
-
-        $data_set.Dispose()
-        $data_adapter.Dispose()
-        $oracle_command.Dispose()
-    }
-
     $Command = ($Command -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }) -join ' '
 
     Log debug $Command
