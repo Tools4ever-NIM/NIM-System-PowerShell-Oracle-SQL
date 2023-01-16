@@ -506,7 +506,7 @@ function Invoke-OracleSqlCommand {
             [string] $Command
         )
 
-        $oracle_command = New-Object Oracle.ManagedDataAccess.Client.OracleCommand($Command, $Global:OracleSqlConnection)
+        $SQLCommand = New-Object Oracle.ManagedDataAccess.Client.OracleCommand($Command, $Global:OracleSqlConnection)
         $data_reader = $SqlCommand.ExecuteReader()
         $column_names = @($data_reader.GetSchemaTable().ColumnName)
 
@@ -533,7 +533,7 @@ function Invoke-OracleSqlCommand {
         }
 
         $data_reader.Close()
-        $oracle_command.Dispose()
+        $SQLCommand.Dispose()
     }
 
     $Command = ($Command -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }) -join ' '
