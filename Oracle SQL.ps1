@@ -130,88 +130,90 @@ $SqlInfoCache = @{}
 
 
 function Fill-SqlInfoCache {
-    $t_now = Get-Date
-    
+    param (
+        [switch] $Force
+    )
+
     if (!$Force -and $Global:SqlInfoCache.Ts -and ((Get-Date) - $Global:SqlInfoCache.Ts).TotalMilliseconds -le [Int32]600000) {
         return
     }
-    
+
     # Refresh cache
-    $Global:SqlInfoCache.Data = Invoke-OracleSqlCommand "
+    $sql_command = New-OracleSqlCommand "
         SELECT
-            AT.OWNER || '.' || AT.TABLE_NAME AS full_object_name,
-            (CASE WHEN AO.OBJECT_TYPE = 'TABLE' THEN 'Table' WHEN AO.OBJECT_TYPE = 'VIEW' THEN 'View' ELSE 'Unknown' END) AS object_type,
+            AX.OWNER || '.' || AX.OBJECT_NAME AS full_object_name,
+            (CASE WHEN AO.OBJECT_TYPE = 'TABLE' THEN 'Table' WHEN AO.OBJECT_TYPE = 'VIEW' THEN 'View' ELSE 'Other' END) AS object_type,
             ATC.COLUMN_NAME,
-            (CASE WHEN PKS.TABLE_NAME IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
-            (CASE WHEN ATC.IDENTITY_COLUMN = 'NO' THEN 0 ELSE 1 END) AS is_identity,
-            (CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO' THEN 0 ELSE 1 END) AS is_computed,
-            (CASE WHEN ATC.NULLABLE        = 'N'  THEN 0 ELSE 1 END) AS is_nullable
+            (CASE WHEN PK.COLUMN_NAME      IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
+            (CASE WHEN ATC.IDENTITY_COLUMN = 'NO'  THEN 0 ELSE 1 END) AS is_identity,
+            (CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO'  THEN 0 ELSE 1 END) AS is_computed,
+            (CASE WHEN ATC.NULLABLE        = 'N'   THEN 0 ELSE 1 END) AS is_nullable
         FROM
-            SYS.ALL_TABLES AT
-            INNER JOIN SYS.ALL_OBJECTS AO ON AT.OWNER = AO.OWNER AND AT.TABLE_NAME = AO.OBJECT_NAME
-            INNER JOIN SYS.ALL_TAB_COLS ATC ON AT.OWNER = ATC.OWNER AND AT.TABLE_NAME = ATC.TABLE_NAME
-            LEFT JOIN SYS.ALL_CONS_COLUMNS ACC ON AT.OWNER = ACC.OWNER AND AT.TABLE_NAME = ACC.TABLE_NAME AND ATC.COLUMN_NAME = ACC.COLUMN_NAME
-            LEFT JOIN (
+            (
                 SELECT
                     OWNER,
-                    TABLE_NAME,
-                    CONSTRAINT_NAME
+                    TABLE_NAME AS OBJECT_NAME
                 FROM
-                    SYS.ALL_CONSTRAINTS
-                WHERE
-                    CONSTRAINT_TYPE = 'P'
-            ) PKS ON AT.OWNER = PKS.OWNER AND AT.TABLE_NAME = PKS.TABLE_NAME AND ACC.CONSTRAINT_NAME = PKS.CONSTRAINT_NAME
-        WHERE
-            AT.OWNER NOT IN ('APPQOSSYS', 'CTXSYS', 'DBSFWUSER', 'DBSNMP', 'DVSYS', 'GSMADMIN_INTERNAL', 'MDSYS', 'OLAPSYS', 'ORDDATA', 'ORDSYS', 'RQSYS', 'SYSTEM', 'WMSYS', 'XDB','SYS','LBACSYS') AND
-            AT.TABLE_NAME NOT LIKE '%$%'
-        UNION
-        SELECT
-            AT.OWNER || '.' || AT.VIEW_NAME AS full_object_name,
-            (CASE WHEN AO.OBJECT_TYPE = 'TABLE' THEN 'Table' WHEN AO.OBJECT_TYPE = 'VIEW' THEN 'View' ELSE 'Unknown' END) AS object_type,
-            ATC.COLUMN_NAME,
-            (CASE WHEN PKS.TABLE_NAME IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
-            (CASE WHEN ATC.IDENTITY_COLUMN = 'NO' THEN 0 ELSE 1 END) AS is_identity,
-            (CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO' THEN 0 ELSE 1 END) AS is_computed,
-            (CASE WHEN ATC.NULLABLE        = 'N'  THEN 0 ELSE 1 END) AS is_nullable
-        FROM
-            SYS.ALL_VIEWS AT
-            INNER JOIN SYS.ALL_OBJECTS AO ON AT.OWNER = AO.OWNER AND AT.VIEW_NAME = AO.OBJECT_NAME
-            INNER JOIN SYS.ALL_TAB_COLS ATC ON AT.OWNER = ATC.OWNER AND AT.VIEW_NAME = ATC.TABLE_NAME
-            LEFT JOIN SYS.ALL_CONS_COLUMNS ACC ON AT.OWNER = ACC.OWNER AND AT.VIEW_NAME = ACC.TABLE_NAME AND ATC.COLUMN_NAME = ACC.COLUMN_NAME
-            LEFT JOIN (
+                    SYS.ALL_TABLES
+                UNION
                 SELECT
                     OWNER,
-                    TABLE_NAME,
-                    CONSTRAINT_NAME
+                    VIEW_NAME AS OBJECT_NAME
                 FROM
-                    SYS.ALL_CONSTRAINTS
+                    SYS.ALL_VIEWS
+            ) AX
+            INNER JOIN SYS.ALL_OBJECTS  AO  ON AX.OWNER = AO.OWNER  AND AX.OBJECT_NAME = AO.OBJECT_NAME
+            INNER JOIN SYS.ALL_TAB_COLS ATC ON AX.OWNER = ATC.OWNER AND AX.OBJECT_NAME = ATC.TABLE_NAME
+            LEFT JOIN (
+                SELECT
+                    ACC.*
+                FROM
+                    SYS.ALL_CONS_COLUMNS ACC
+                    INNER JOIN SYS.ALL_CONSTRAINTS AC ON ACC.OWNER = AC.OWNER AND ACC.TABLE_NAME = AC.TABLE_NAME AND ACC.CONSTRAINT_NAME = AC.CONSTRAINT_NAME 
                 WHERE
-                    CONSTRAINT_TYPE = 'P'
-            ) PKS ON AT.OWNER = PKS.OWNER AND AT.VIEW_NAME = PKS.TABLE_NAME AND ACC.CONSTRAINT_NAME = PKS.CONSTRAINT_NAME
+                    AC.CONSTRAINT_TYPE = 'P'
+            ) PK ON AX.OWNER = PK.OWNER AND AX.OBJECT_NAME = PK.TABLE_NAME AND ATC.COLUMN_NAME = PK.COLUMN_NAME
         WHERE
-            AT.OWNER NOT IN ('APPQOSSYS', 'CTXSYS', 'DBSFWUSER', 'DBSNMP', 'DVSYS', 'GSMADMIN_INTERNAL', 'MDSYS', 'OLAPSYS', 'ORDDATA', 'ORDSYS', 'RQSYS', 'SYSTEM', 'WMSYS', 'XDB','SYS','LBACSYS') AND
-            AT.VIEW_NAME NOT LIKE '%$%'
+            AX.OWNER NOT IN ('APPQOSSYS', 'CTXSYS', 'DBSFWUSER', 'DBSNMP', 'DVSYS', 'GSMADMIN_INTERNAL', 'LBACSYS', 'MDSYS', 'OLAPSYS', 'ORDDATA', 'ORDSYS', 'RQSYS', 'SYS','SYSTEM', 'WMSYS', 'XDB') AND
+            AX.OBJECT_NAME NOT LIKE '%$%'
+        ORDER BY
+            full_object_name, ATC.COLUMN_ID
     "
 
-    $Global:SqlInfoCache.Ts = $t_now
-}
+    $objects = New-Object System.Collections.ArrayList
+    $object = @{}
 
+    # Process in one pass
+    Invoke-OracleSqlCommand $sql_command | ForEach-Object {
+        if ($_.full_object_name -ne $object.full_name) {
+            if ($object.full_name -ne $null) {
+                $objects.Add($object) | Out-Null
+            }
 
-function Get-SqlTablesInfo {
-    Fill-SqlInfoCache
+            $object = @{
+                full_name = $_.full_object_name
+                type      = $_.object_type
+                columns   = New-Object System.Collections.ArrayList
+            }
+        }
 
-    @( $Global:SqlInfoCache.Data | Select-Object -Unique -Property @{ name = 'name'; expression = {$_.full_object_name} }, @{ name = 'type'; expression = {$_.object_type} } )
-}
+        $object.columns.Add(@{
+            name           = $_.column_name
+            is_primary_key = $_.is_primary_key
+            is_identity    = $_.is_identity
+            is_computed    = $_.is_computed
+            is_nullable    = $_.is_nullable
+        }) | Out-Null
+    }
 
+    if ($object.full_name -ne $null) {
+        $objects.Add($object) | Out-Null
+    }
 
-function Get-SqlColumnsInfo {
-    param (
-        [String] $Table
-    )
+    Dispose-OracleSqlCommand $sql_command
 
-    Fill-SqlInfoCache
-
-    @( $Global:SqlInfoCache.Data | Where-Object { $_.full_object_name -eq $Table } | Select-Object -Property '*' -ExcludeProperty @('full_object_name', 'object_type') )
+    $Global:SqlInfoCache.Objects = $objects
+    $Global:SqlInfoCache.Ts = Get-Date
 }
 
 
@@ -228,7 +230,7 @@ function Idm-Dispatcher {
     )
 
     Log info "-Class='$Class' -Operation='$Operation' -GetMeta=$GetMeta -SystemParams='$SystemParams' -FunctionParams='$FunctionParams'"
-    Log debug "test"
+
     if ($Class -eq '') {
 
         if ($GetMeta) {
@@ -238,49 +240,49 @@ function Idm-Dispatcher {
 
             Open-OracleSqlConnection $SystemParams
 
-            $tables = Get-SqlTablesInfo
+            Fill-SqlInfoCache -Force
 
             #
             # Output list of supported operations per table/view (named Class)
             #
 
             @(
-                foreach ($t in $tables) {
-                    $primary_key = @( Get-SqlColumnsInfo $t.name | Where-Object { $_.is_primary_key } | ForEach-Object { $_.column_name })[0]
+                foreach ($object in $Global:SqlInfoCache.Objects) {
+                    $primary_keys = $object.columns | Where-Object { $_.is_primary_key } | ForEach-Object { $_.name }
 
-                    if ($t.type -ne 'Table') {
+                    if ($object.type -ne 'Table') {
                         # Non-tables only support 'Read'
                         [ordered]@{
-                            Class = $t.name
+                            Class = $object.full_name
                             Operation = 'Read'
-                            'Source type' = $t.type
-                            'Primary key' = $primary_key
+                            'Source type' = $object.type
+                            'Primary key' = $primary_keys -join ', '
                             'Supported operations' = 'R'
                         }
                     }
                     else {
                         [ordered]@{
-                            Class = $t.name
+                            Class = $object.full_name
                             Operation = 'Create'
                         }
 
                         [ordered]@{
-                            Class = $t.name
+                            Class = $object.full_name
                             Operation = 'Read'
-                            'Source type' = $t.type
-                            'Primary key' = $primary_key
-                            'Supported operations' = "CR$(if ($primary_key) { 'UD' } else { '' })"
+                            'Source type' = $object.type
+                            'Primary key' = $primary_keys -join ', '
+                            'Supported operations' = "CR$(if ($primary_keys) { 'UD' } else { '' })"
                         }
 
-                        if ($primary_key) {
-                            # Only supported if primary key is present
+                        if ($primary_keys) {
+                            # Only supported if primary keys are present
                             [ordered]@{
-                                Class = $t.name
+                                Class = $object.full_name
                                 Operation = 'Update'
                             }
 
                             [ordered]@{
-                                Class = $t.name
+                                Class = $object.full_name
                                 Operation = 'Delete'
                             }
                         }
@@ -303,7 +305,9 @@ function Idm-Dispatcher {
 
             Open-OracleSqlConnection $SystemParams
 
-            $columns = Get-SqlColumnsInfo $Class
+            Fill-SqlInfoCache
+
+            $columns = ($Global:SqlInfoCache.Objects | Where-Object { $_.full_name -eq $Class }).columns
 
             switch ($Operation) {
                 'Create' {
@@ -312,7 +316,7 @@ function Idm-Dispatcher {
                         parameters = @(
                             $columns | ForEach-Object {
                                 @{
-                                    name = $_.column_name;
+                                    name = $_.name;
                                     allowance = if ($_.is_identity -or $_.is_computed) { 'prohibited' } elseif (! $_.is_nullable) { 'mandatory' } else { 'optional' }
                                 }
                             }
@@ -338,10 +342,10 @@ function Idm-Dispatcher {
                             table = @{
                                 rows = @($columns | ForEach-Object {
                                     @{
-                                        name = $_.column_name
+                                        name = $_.name
                                         config = @(
                                             if ($_.is_primary_key) { 'Primary key' }
-                                            if ($_.is_identity)    { 'Auto identity' }
+                                            if ($_.is_identity)    { 'Generated' }
                                             if ($_.is_computed)    { 'Computed' }
                                             if ($_.is_nullable)    { 'Nullable' }
                                         ) -join ' | '
@@ -364,7 +368,7 @@ function Idm-Dispatcher {
                                     )
                                 }
                             }
-                            value = @($columns | ForEach-Object { $_.column_name })
+                            value = @($columns | ForEach-Object { $_.name })
                         }
                     )
                     break
@@ -376,9 +380,13 @@ function Idm-Dispatcher {
                         parameters = @(
                             $columns | ForEach-Object {
                                 @{
-                                    name = $_.column_name;
+                                    name = $_.name;
                                     allowance = if ($_.is_primary_key) { 'mandatory' } else { 'optional' }
                                 }
+                            }
+                            @{
+                                name = '*'
+                                allowance = 'prohibited'
                             }
                         )
                     }
@@ -392,7 +400,7 @@ function Idm-Dispatcher {
                             $columns | ForEach-Object {
                                 if ($_.is_primary_key) {
                                     @{
-                                        name = $_.column_name
+                                        name = $_.name
                                         allowance = 'mandatory'
                                     }
                                 }
@@ -416,72 +424,220 @@ function Idm-Dispatcher {
             Open-OracleSqlConnection $SystemParams
 
             if (! $Global:ColumnsInfoCache[$Class]) {
-                $columns = Get-SqlColumnsInfo $Class
+                Fill-SqlInfoCache
+
+                $columns = ($Global:SqlInfoCache.Objects | Where-Object { $_.full_name -eq $Class }).columns
 
                 $Global:ColumnsInfoCache[$Class] = @{
-                    primary_key  = @($columns | Where-Object { $_.is_primary_key } | ForEach-Object { $_.column_name })[0]
-                    identity_col = @($columns | Where-Object { $_.is_identity    } | ForEach-Object { $_.column_name })[0]
+                    primary_keys = @($columns | Where-Object { $_.is_primary_key } | ForEach-Object { $_.name })
+                    identity_col = @($columns | Where-Object { $_.is_identity    } | ForEach-Object { $_.name })[0]
                 }
             }
 
-            $primary_key  = $Global:ColumnsInfoCache[$Class].primary_key
+            $primary_keys = $Global:ColumnsInfoCache[$Class].primary_keys
             $identity_col = $Global:ColumnsInfoCache[$Class].identity_col
 
             $function_params = ConvertFrom-Json2 $FunctionParams
 
-            $command = $null
+            # Replace $null by [System.DBNull]::Value
+            $keys_with_null_value = @()
+            foreach ($key in $function_params.Keys) { if ($function_params[$key] -eq $null) { $keys_with_null_value += $key } }
+            foreach ($key in $keys_with_null_value) { $function_params[$key] = [System.DBNull]::Value }
+
+            $sql_command1 = New-OracleSqlCommand
 
             $projection = if ($function_params['selected_columns'].count -eq 0) { '*' } else { @($function_params['selected_columns'] | ForEach-Object { """$_""" }) -join ', ' }
 
             switch ($Operation) {
                 'Create' {
-                    $selection = if ($identity_col) {
-                                     """$identity_col"" = SCOPE_IDENTITY()"
-                                 }
-                                 elseif ($primary_key) {
-                                     """$primary_key"" = '$($function_params[$primary_key])'"
-                                 }
-                                 else {
-                                     @($function_params.Keys | ForEach-Object { """$_"" = '$($function_params[$_])'" }) -join ' AND '
-                                 }
+                    if ($identity_col) {
+                        $sql_command1.CommandText = "
+                            BEGIN
+                                DBMS_OUTPUT.ENABLE;
+                                DECLARE nim_identity_col $($Class).""$identity_col""%TYPE;
+                                BEGIN
+                                    INSERT INTO $Class (
+                                        " + (@($function_params.Keys | ForEach-Object { """$_""" }) -join ', ') + "
+                                    )
+                                    VALUES (
+                                        $(@($function_params.Keys | ForEach-Object { AddParam-OracleSqlCommand $sql_command1 $function_params[$_] }) -join ', ')
+                                    )
+                                    RETURNING
+                                        ""$identity_col""
+                                    INTO
+                                        nim_identity_col;
+                                    DBMS_OUTPUT.PUT_LINE(nim_identity_col);
+                                    DBMS_OUTPUT.GET_LINE(:buffer, :status);
+                                END;
+                            END;
+                        "
 
-                    $command = "INSERT INTO $Class (" + @($function_params.Keys | ForEach-Object { """$_""" }) -join ', ' + ") VALUES ($(@($function_params.Keys | ForEach-Object { "$(if ($function_params[$_] -ne $null) { "'$($function_params[$_])'" } else { 'null' })" }) -join ', ')); SELECT $projection FROM $Class WHERE $selection"
+                        $p_buffer = New-Object Oracle.ManagedDataAccess.Client.OracleParameter(":buffer", [Oracle.ManagedDataAccess.Client.OracleDbType]::VarChar2, 32767, "", [System.Data.ParameterDirection]::Output)
+                        $p_status = New-Object Oracle.ManagedDataAccess.Client.OracleParameter(":status", [Oracle.ManagedDataAccess.Client.OracleDbType]::Decimal,             [System.Data.ParameterDirection]::Output)
+
+                        $sql_command1.Parameters.Add($p_buffer) | Out-Null
+                        $sql_command1.Parameters.Add($p_status) | Out-Null
+
+                        $deparam_command = DeParam-OracleSqlCommand $sql_command1
+
+                        LogIO info 'INSERT' -In -Command $deparam_command
+
+                        Invoke-OracleSqlCommand $sql_command1 $deparam_command
+
+                        if ($p_status.Value.ToInt32() -ne 0) {
+                            $message = "Status $($p_status.Value.ToInt32()) returned by command: $deparam_command"
+                            Log error "Failed: $message"
+                            Write-Error $message
+                        }
+
+                        $sql_command2 = New-OracleSqlCommand
+
+                        $filter = """$identity_col"" = $(AddParam-OracleSqlCommand $sql_command2 $p_buffer.Value)"
+                    }
+                    else {
+                        $sql_command1.CommandText = "
+                            INSERT INTO $Class (
+                                " + (@($function_params.Keys | ForEach-Object { """$_""" }) -join ', ') + "
+                            )
+                            VALUES (
+                                $(@($function_params.Keys | ForEach-Object { AddParam-OracleSqlCommand $sql_command1 $function_params[$_] }) -join ', ')
+                            )
+                        "
+
+                        $deparam_command = DeParam-OracleSqlCommand $sql_command1
+
+                        LogIO info ($deparam_command -split ' ')[0] -In -Command $deparam_command
+
+                        Invoke-OracleSqlCommand $sql_command1 $deparam_command
+
+                        $sql_command2 = New-OracleSqlCommand
+
+                        $filter = if ($primary_keys) {
+                            @($primary_keys | ForEach-Object { """$_"" = $(AddParam-OracleSqlCommand $sql_command2 $function_params[$_])" }) -join ' AND '
+                        }
+                        else {
+                            @($function_params.Keys | ForEach-Object { """$_"" = $(AddParam-OracleSqlCommand $sql_command2 $function_params[$_])" }) -join ' AND '
+                        }
+                    }
+
+                    # Do not process
+                    $sql_command1.CommandText = ""
+
+                    $sql_command2.CommandText = "
+                        SELECT
+                            $projection
+                        FROM
+                            $Class
+                        WHERE
+                            $filter AND
+                            ROWNUM = 1
+                    "
+
+                    $deparam_command = DeParam-OracleSqlCommand $sql_command2
+
+                    # Log output
+                    $rv = Invoke-OracleSqlCommand $sql_command2 $deparam_command | ForEach-Object { $_ }
+                    LogIO info 'INSERT' -Out $rv
+
+                    $rv
+
+                    Dispose-OracleSqlCommand $sql_command2
                     break
                 }
 
                 'Read' {
-                    $selection = if ($function_params['where_clause'].length -eq 0) { '' } else { ' WHERE ' + $function_params['where_clause'] }
+                    $filter = if ($function_params['where_clause'].length -eq 0) { '' } else { " WHERE $($function_params['where_clause'])" }
 
-                    $command = "SELECT $projection FROM $Class$selection"
+                    $sql_command1.CommandText = "
+                        SELECT
+                            $projection
+                        FROM
+                            $Class$filter
+                    "
                     break
                 }
 
                 'Update' {
-                    $command = "UPDATE $Class SET " + @($function_params.Keys | ForEach-Object { if ($_ -ne $primary_key) { """$_"" = $(if ($function_params[$_] -ne $null) { "'$($function_params[$_])'" } else { 'null' })" } }) -join ', ' + " WHERE ""$primary_key"" = '$($function_params[$primary_key])'"
+                    $filter = @($primary_keys | ForEach-Object { """$_"" = $(AddParam-OracleSqlCommand $sql_command1 $function_params[$_])" }) -join ' AND '
+
+                    $sql_command1.CommandText = "
+                        UPDATE
+                            $Class
+                        SET
+                            " + (@($function_params.Keys | ForEach-Object { if ($_ -notin $primary_keys) { """$_"" = $(AddParam-OracleSqlCommand $sql_command1 $function_params[$_])" } }) -join ', ') + "
+                        WHERE
+                            $filter AND
+                            ROWNUM = 1
+                    "
+
+                    $deparam_command = DeParam-OracleSqlCommand $sql_command1
+
+                    LogIO info ($deparam_command -split ' ')[0] -In -Command $deparam_command
+
+                    Invoke-OracleSqlCommand $sql_command1 $deparam_command
+
+                    $sql_command2 = New-OracleSqlCommand
+
+                    $filter = @($primary_keys | ForEach-Object { """$_"" = $(AddParam-OracleSqlCommand $sql_command2 $function_params[$_])" }) -join ' AND '
+
+                    # Do not process
+                    $sql_command1.CommandText = ""
+
+                    $sql_command2.CommandText = "
+                        SELECT
+                            " + (@($function_params.Keys | ForEach-Object { """$_""" }) -join ', ') + "
+                        FROM
+                            $Class
+                        WHERE
+                            $filter AND
+                            ROWNUM = 1
+                    "
+
+                    $deparam_command = DeParam-OracleSqlCommand $sql_command2
+
+                    # Log output
+                    $rv = Invoke-OracleSqlCommand $sql_command2 $deparam_command | ForEach-Object { $_ }
+                    LogIO info 'UPDATE' -Out $rv
+
+                    $rv
+
+                    Dispose-OracleSqlCommand $sql_command2
                     break
                 }
 
                 'Delete' {
-                    $command = "DELETE $Class WHERE ""$primary_key"" = '$($function_params[$primary_key])'"
+                    $filter = @($primary_keys | ForEach-Object { """$_"" = $(AddParam-OracleSqlCommand $sql_command1 $function_params[$_])" }) -join ' AND '
+
+                    $sql_command1.CommandText = "
+                        DELETE
+                            $Class
+                        WHERE
+                            $filter AND
+                            ROWNUM = 1
+                    "
                     break
                 }
             }
 
-            if ($command) {
-                LogIO info ($command -split ' ')[0] -In -Command $command
+            if ($sql_command1.CommandText) {
+                $deparam_command = DeParam-OracleSqlCommand $sql_command1
+
+                LogIO info ($deparam_command -split ' ')[0] -In -Command $deparam_command
 
                 if ($Operation -eq 'Read') {
                     # Streamed output
-                    Invoke-OracleSqlCommand $command
+                    Invoke-OracleSqlCommand $sql_command1 $deparam_command
                 }
                 else {
                     # Log output
-                    $rv = Invoke-OracleSqlCommand $command
-                    LogIO info ($command -split ' ')[0] -Out $rv
+                    $rv = Invoke-OracleSqlCommand $sql_command1 $deparam_command | ForEach-Object { $_ }
+                    LogIO info ($deparam_command -split ' ')[0] -Out $rv
 
                     $rv
                 }
             }
+
+            Dispose-OracleSqlCommand $sql_command1
 
         }
 
@@ -495,18 +651,104 @@ function Idm-Dispatcher {
 # Helper functions
 #
 
+function New-OracleSqlCommand {
+    param (
+        [string] $CommandText
+    )
+
+    $sql_command = New-Object Oracle.ManagedDataAccess.Client.OracleCommand($CommandText, $Global:OracleSqlConnection)
+    $sql_command.BindByName = $true
+
+    return $sql_command
+}
+
+
+function Dispose-OracleSqlCommand {
+    param (
+        [Oracle.ManagedDataAccess.Client.OracleCommand] $SqlCommand
+    )
+
+    $SqlCommand.Dispose()
+}
+
+
+function AddParam-OracleSqlCommand {
+    param (
+        [Oracle.ManagedDataAccess.Client.OracleCommand] $SqlCommand,
+        $Param
+    )
+
+    $param_name = ":param$($SqlCommand.Parameters.Count)_"
+    $param_value = if ($Param -isnot [system.array]) { $Param } else { $Param | ConvertTo-Json -Compress -Depth 32 }
+
+    $SqlCommand.Parameters.Add($param_name, $param_value) | Out-Null
+
+    return $param_name
+}
+
+
+function DeParam-OracleSqlCommand {
+    param (
+        [Oracle.ManagedDataAccess.Client.OracleCommand] $SqlCommand
+    )
+
+    $deparam_command = $SqlCommand.CommandText
+
+    foreach ($p in $SqlCommand.Parameters) {
+        if ($p.Direction -eq [System.Data.ParameterDirection]::Output) {
+            continue
+        }
+
+        $value_txt = 
+            if ($p.Value -eq [System.DBNull]::Value) {
+                'NULL'
+            }
+            else {
+                switch ($p.SqlDbType) {
+                    { $_ -in @(
+                        [Oracle.ManagedDataAccess.Client.OracleDbType]::Char
+                        [Oracle.ManagedDataAccess.Client.OracleDbType]::Date
+                        [Oracle.ManagedDataAccess.Client.OracleDbType]::NChar
+                        [Oracle.ManagedDataAccess.Client.OracleDbType]::NVarChar
+                        [Oracle.ManagedDataAccess.Client.OracleDbType]::NVarChar2
+                        [Oracle.ManagedDataAccess.Client.OracleDbType]::TimeStamp
+                        [Oracle.ManagedDataAccess.Client.OracleDbType]::TimeStampLTZ
+                        [Oracle.ManagedDataAccess.Client.OracleDbType]::TimeStampTZ
+                        [Oracle.ManagedDataAccess.Client.OracleDbType]::VarChar
+                        [Oracle.ManagedDataAccess.Client.OracleDbType]::VarChar2
+                        [Oracle.ManagedDataAccess.Client.OracleDbType]::XmlType
+                    )} {
+                        "'" + $p.Value.ToString().Replace("'", "''") + "'"
+                        break
+                    }
+        
+                    default {
+                        $p.Value.ToString().Replace("'", "''")
+                        break
+                    }
+                }
+            }
+
+        $deparam_command = $deparam_command.Replace($p.ParameterName, $value_txt)
+    }
+
+    # Make one single line
+    @($deparam_command -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }) -join ' '
+}
+
+
 function Invoke-OracleSqlCommand {
     param (
-        [string] $Command
+        [Oracle.ManagedDataAccess.Client.OracleCommand] $SqlCommand,
+        [string] $DeParamCommand
     )
 
     # Streaming
     function Invoke-OracleSqlCommand-ExecuteReader {
         param (
-            [string] $Command
+            [Oracle.ManagedDataAccess.Client.OracleCommand] $SqlCommand
         )
 
-        $SQLCommand = New-Object Oracle.ManagedDataAccess.Client.OracleCommand($Command, $Global:OracleSqlConnection)
         $data_reader = $SqlCommand.ExecuteReader()
         $column_names = @($data_reader.GetSchemaTable().ColumnName)
 
@@ -533,20 +775,75 @@ function Invoke-OracleSqlCommand {
         }
 
         $data_reader.Close()
-        $SQLCommand.Dispose()
     }
 
-    $Command = ($Command -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }) -join ' '
+    # Streaming
+    function Invoke-OracleSqlCommand-ExecuteReader00 {
+        param (
+            [Oracle.ManagedDataAccess.Client.OracleCommand] $SqlCommand
+        )
 
-    Log debug $Command
+        $data_reader = $SqlCommand.ExecuteReader()
+        $column_names = @($data_reader.GetSchemaTable().ColumnName)
+
+        if ($column_names) {
+
+            # Initialize result
+            $hash_table = [ordered]@{}
+
+            for ($i = 0; $i -lt $column_names.Count; $i++) {
+                $hash_table[$column_names[$i]] = ''
+            }
+
+            $result = New-Object -TypeName PSObject -Property $hash_table
+
+            # Read data
+            while ($data_reader.Read()) {
+                foreach ($column_name in $column_names) {
+                    $result.$column_name = $data_reader[$column_name]
+                }
+
+                # Output data
+                $result
+            }
+
+        }
+
+        $data_reader.Close()
+    }
+
+    # Non-streaming (data stored in $data_set)
+    function Invoke-OracleSqlCommand-DataAdapter-DataSet {
+        param (
+            [Oracle.ManagedDataAccess.Client.OracleCommand] $SqlCommand
+        )
+
+        $data_adapter = New-Object Oracle.ManagedDataAccess.Client.OracleDataAdapter($SqlCommand)
+        $data_set     = New-Object System.Data.DataSet
+        $data_adapter.Fill($data_set) | Out-Null
+
+        # Output data
+        $data_set.Tables[0]
+
+        $data_set.Dispose()
+        $data_adapter.Dispose()
+    }
+
+    if (! $DeParamCommand) {
+        $DeParamCommand = DeParam-OracleSqlCommand $SqlCommand
+    }
+
+    Log debug $DeParamCommand
 
     try {
-        Invoke-OracleSqlCommand-ExecuteReader $Command
+        Invoke-OracleSqlCommand-ExecuteReader $SqlCommand
     }
     catch {
         Log error "Failed: $_"
         Write-Error $_
     }
+
+    Log debug "Done"
 }
 
 
