@@ -9,4 +9,6 @@
 # Settings
 
 ODP.NET installation path = C:\Oracle
-Data Source = <HOST>:<PORT>/<TNS>
+
+
+Data Source = {HOST}:{PORT}/{TNS}
