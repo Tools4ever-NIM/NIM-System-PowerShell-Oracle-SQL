@@ -478,7 +478,7 @@ function Idm-Dispatcher {
             {
                 if($connection_params."table_$($i)_name" -eq $class)
                 {
-                    $class_query = $connection_params."table_$($i)_query"
+                    $class_query = ($connection_params."table_$($i)_query" -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }) -join ' '
                     break
                 }
             }
