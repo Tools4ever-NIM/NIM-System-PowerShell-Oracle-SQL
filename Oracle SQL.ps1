@@ -147,7 +147,7 @@ function Fill-SqlInfoCache {
             (CASE WHEN PK.COLUMN_NAME      IS NULL THEN 0 ELSE 1 END) AS is_primary_key,
             (CASE WHEN ATC.IDENTITY_COLUMN = 'NO'  THEN 0 ELSE 1 END) AS is_identity,
             (CASE WHEN ATC.VIRTUAL_COLUMN  = 'NO'  THEN 0 ELSE 1 END) AS is_computed,
-            (CASE WHEN ATC.NULLABLE        = 'N'   THEN 0 ELSE 1 END) AS is_nullable
+            (CASE WHEN ATC.NULLABLE        = 'N'   AND ATC.DATA_DEFAULT IS NULL THEN 0 ELSE 1 END) AS is_nullable
         FROM
             (
                 SELECT
