@@ -33,7 +33,7 @@ function Idm-SystemInfo {
                 name = 'DataProvider'
                 type = 'combo'
                 label = 'Data Provider'
-                description = 'Data Provider for Oracle SQL server'
+                tooltip = 'Data Provider for Oracle SQL server'
                 table = @{
                     rows = @(
                         # Get ODP.NET_Managed_ODAC122cR1.zip from https://www.oracle.com/database/technologies/odac-downloads.html
@@ -51,14 +51,14 @@ function Idm-SystemInfo {
                 name = 'ODP_NET_InstallPath'
                 type = 'textbox'
                 label = 'ODP.NET installation path'
-                description = 'Path of ODP.NET installation'
+                tooltip = 'Path of ODP.NET installation'
                 value = ''
             }
             @{
                 name = 'DataSource'
                 type = 'textbox'
                 label = 'Data Source'
-                description = 'Data Source of Oracle SQL server'
+                tooltip = 'Data Source of Oracle SQL server'
                 value = ''
             }
             @{
@@ -72,7 +72,7 @@ function Idm-SystemInfo {
                 type = 'textbox'
                 label = 'Username'
                 label_indent = $true
-                description = 'User account name to access Oracle SQL server'
+                tooltip = 'User account name to access Oracle SQL server'
                 value = ''
                 hidden = 'UseSvcAccountCreds'
             }
@@ -82,7 +82,7 @@ function Idm-SystemInfo {
                 password = $true
                 label = 'Password'
                 label_indent = $true
-                description = 'User account password to access Oracle SQL server'
+                tooltip = 'User account password to access Oracle SQL server'
                 value = ''
                 hidden = 'UseSvcAccountCreds'
             }
@@ -90,14 +90,14 @@ function Idm-SystemInfo {
                 name = 'nr_of_sessions'
                 type = 'textbox'
                 label = 'Max. number of simultaneous sessions'
-                description = ''
+                tooltip = ''
                 value = 5
             }
             @{
                 name = 'sessions_idle_timeout'
                 type = 'textbox'
                 label = 'Session cleanup idle time (minutes)'
-                description = ''
+                tooltip = ''
                 value = 30
             }
         )
@@ -331,14 +331,14 @@ function Idm-Dispatcher {
                             name = 'where_clause'
                             type = 'textbox'
                             label = 'Filter (SQL where-clause)'
-                            description = 'Applied SQL where-clause'
+                            tooltip = 'Applied SQL where-clause'
                             value = ''
                         }
                         @{
                             name = 'selected_columns'
                             type = 'grid'
                             label = 'Include columns'
-                            description = 'Selected columns'
+                            tooltip = 'Selected columns'
                             table = @{
                                 rows = @($columns | ForEach-Object {
                                     @{
