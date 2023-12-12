@@ -97,7 +97,7 @@ function Idm-SystemInfo {
                 name = 'sessions_idle_timeout'
                 type = 'textbox'
                 label = 'Session cleanup idle time (minutes)'
-                tooltip = ''
+                tooltip = '0 disables session cleanup'
                 value = 30
             }
         )
