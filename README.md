@@ -1,14 +1,14 @@
-# NIM-System-PowerShell-Oracle-SQL
-
-# Requirements
-- ODP.NET Driver
-    - Get ODP.NET_Managed_ODAC122cR1.zip from https://www.oracle.com/database/technologies/odac-downloads.html
-    - Install using elevated command prompt: install_odpm.bat D:\Oracle x64 true
+# Oracle SQL
+<img src="https://github.com/Tools4ever-NIM/NIM-System-PowerShell-Oracle-SQL/assets/24281600/52d8b756-f51c-4154-8bc6-d034f1fce350" width="256px" />
 
 
-# Settings
+## Data Tables
+- This is open ended. You can select any table from the database
 
-ODP.NET installation path = C:\Oracle
+
+## Actions
+- Only restricted to privileges of the database account. Insert/Update/Delete are available for each table
 
 
-Data Source = {HOST}:{PORT}/{TNS}
+# NIM Docs
+The official NIM documentation can be found at: https://docs.nimsuite.com
