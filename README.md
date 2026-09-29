@@ -1,4 +1,7 @@
 # Oracle SQL
+
+Read the [Oracle Database integration documentation](https://docs.nimsuite.com/en/integrations/oracle-database) for connector details and related guides.
+
 <img src="https://github.com/Tools4ever-NIM/NIM-System-PowerShell-Oracle-SQL/assets/24281600/52d8b756-f51c-4154-8bc6-d034f1fce350" width="256px" />
 
 
